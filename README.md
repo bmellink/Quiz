@@ -14,10 +14,10 @@ Over time I created 3 generations:
 3. Wireless using ESP8266 using standard WiFi communication
 
 The Github repository contains the 2nd and 3rd generation:
-- QuizNode - code for the buttons of the 2nd generation (Arduino Pro Mini ATMEGA328/ nRF24L01 based)
-- QuizHub - code for the central hub of the 2nd generation (Arduino Pro Mini ATMEGA328/ nRF24L01 based with 4 segment display)
-- QuizNode8266 - code for the buttons of the 3rd generation (ESP8266 based)
-- QuizHub8266 - code for the central hub of the 3rd generation (ESP8266 based, using a web interface)
+- [QuizNode](QuizNode) - Arduino code for the buttons of the 2nd generation (Arduino Pro Mini ATMEGA328/ nRF24L01 based)
+- QuizHub - Arduino code for the central hub of the 2nd generation (Arduino Pro Mini ATMEGA328/ nRF24L01 based with 4 segment display)
+- QuizNode8266 - Arduinocode for the buttons of the 3rd generation (ESP8266 based)
+- QuizHub8266 - Arduino code for the central hub of the 3rd generation (ESP8266 based, using a web interface)
 
 Please note you can not mix 2nd and 3rd generation buttons and hub, as the communication protocol is different.
 
