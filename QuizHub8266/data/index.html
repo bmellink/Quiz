@@ -1,0 +1,236 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+
+    <title>Quiz Hub</title>
+
+    <link type="text/css" rel="stylesheet" href="https://unpkg.com/bootstrap/dist/css/bootstrap.min.css" />
+    <link type="text/css" rel="stylesheet" href="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.css" />
+    <link type="text/css" rel="stylesheet" href="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue-icons.min.css" />
+ 
+    <!-- Load polyfills to support older browsers -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es2015%2CIntersectionObserver"></script>
+
+    <script src="https://unpkg.com/vue@latest/dist/vue.js"></script>
+    <script src="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.js"></script>
+    <script src="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue-icons.min.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+
+  </head>
+  <body>
+    <!-- Our application root element -->
+    
+    <div id="app">
+    	
+    	<div v-show="isServer==0">
+    		<h1>Waiting for server</h1>
+    	</div>
+    	<div style="display: none" v-show="isServer>0">
+ 			<b-jumbotron header="Quiz Hub" class="text-center">
+				<h1>==
+					<b-badge v-if="info.mode==0" variant="secondary">Stop</b-badge>
+					<b-badge v-else-if="info.mode==1" variant="danger">Hot</b-badge>
+					<b-badge v-else variant="success">Won by {{ names[info.nodeWon] }}</b-badge>
+				==</h1>
+
+				<h1>Timer: <b-badge variant="warning">{{ timerCount }} </b-badge></h1>
+
+	  		    <b-btn variant="primary" v-on:click="isHot = true; callAPI('cmd=1'); timerCount = cntStart; nameIx=-1">Go</b-btn>
+	  		    <b-btn variant="primary" v-on:click="isHot = false; callAPI('cmd=0'); nameIx=-1">Stop</b-btn> 
+     
+				<b-table responsive striped hover :items="info.stats" :fields="fields" @row-clicked="rowClick">
+					<template v-slot:cell(ping)="row">
+						<b-form-checkbox v-model="row.ping" @input="pingAPI(row)"></b-form-checkbox>
+					</template>
+					<template v-slot:cell(sound)="row">
+						{{ row.value }}
+						 <b-icon v-if="row.value" icon="play" variant="light" class="rounded-circle bg-secondary p-0" font-scale="1.5" v-on:click="playSound(row.value)">
+						 </b-icon>
+					</template>
+				</b-table>
+				<b-form-group horizontal :label-cols="4" label="Team Name" v-show="nameIx>=0">
+				   <b-col sm="6">
+		             <b-form-input v-model.trim="name" type="text"></b-form-input>
+		      	   </b-col>
+		        </b-form-group>
+				<b-form-group horizontal :label-cols="4" label="Sound" v-show="nameIx>=0">
+				   <b-col sm="6">
+				   	 <b-form-select v-model="soundSelected" :options="soundOptions"></b-form-select>
+		      	   </b-col>
+		        </b-form-group>
+				<b-form-group horizontal :label-cols="4" label="Timer start (sec)" >
+				   <b-col sm="3" xs="3">
+		             <b-form-input v-model.trim="cntStart" type="number" ></b-form-input>
+		      	   </b-col>
+		        </b-form-group>
+				<b-badge v-on:click="toggleTable()">{{ info.nodeCnt}} node(s) active</b-badge>
+	            <b-badge v-on:click="toggleTable()">Statistics</b-badge>
+	            <b-badge v-on:click="playSound(testSound)" v-show="testSound">
+	            	Sound check
+					<b-icon icon="play" variant="light" class="rounded-circle bg-secondary p-0" font-scale="1"></b-icon>
+	            </b-badge>
+ 			</b-jumbotron>
+		</div>
+    </div>
+
+    <!-- Start running your app -->
+    <script>
+      //	console.log(window.location.href);
+    	
+      window.app = new Vue({
+		  el: '#app',
+		  data () {
+		    return {
+		      info: "",
+		 	  cntStart: 10,
+		 	  name: "",
+		      timerCount: 0,
+		      nameIx: -1,
+		      toggle: 0,
+		      isHot: false,
+		      isServer: 0,
+		      fields: [ "name", "wins", "sound", "ping"],
+		      names: ['Team 1','Team 2','Team 3','Team 4','Team 5','Team 6','Team 7','Team 8'],
+		      sounds: ['','','','','','','','','',''],	// sound name by team
+		      soundSelected: null,		// for field to update edit
+		      qhost: '',				// assume we directly run from our internal web server
+		      soundOptions: [{ value: null, text: 'No sound selected'}],		// list of sounds downloaded from server
+		      haveSounds : false,		// was able to get list of sound files (although may be empty)
+         	  audio: new Audio(),
+         	  testSound: null
+		    }
+		  },
+		  mounted () {
+		  	if (typeof localStorage.name != 'undefined' && localStorage.name.length>5)
+		  		this.names = JSON.parse(localStorage.name); 
+		  	if (typeof localStorage.sounds != 'undefined' && localStorage.sounds.length>5)
+  		  	  	this.sounds = JSON.parse(localStorage.sounds);
+ 		  	this.callAPI("");
+		    setInterval(function(){ this.app.callAPI(""); }, 1000);
+		  },
+		  watch: {
+            timerCount: {
+                handler(value) {
+                    if (value > 0) {
+                        setTimeout(() => {
+                            if (this.isHot) this.timerCount--;
+                        }, 1000);
+                    }
+                },
+                immediate: true // This ensures the watcher is triggered upon creation
+            },
+            name: {
+            	handler(value) {
+            		// console.log("name change " + value + " Index=" + this.nameIx)
+            		if (this.nameIx>=0) {
+            			this.names[this.nameIx] = this.info.stats[this.nameIx].name = value;
+				     	localStorage.name = JSON.stringify(this.names);
+            		}
+	            }
+	         },
+	         info: {
+	         	handler(value, oldval) {
+	         		if (value.mode==2 && oldval.mode!=2) {
+	         			// note that the following statement is triggered if we refresh the site html when the  
+	         			// current quiz mode is "won", but the play() will fail on most browsers during refresh as  
+	         			// autoplay is not allowed. See https://goo.gl/xX8pDD for more info.
+	         			this.playSound(this.sounds[this.info.nodeWon]);	         			
+	         		}
+	         	}
+	         },
+	         soundSelected: {
+	         	handler(value, oldval) {
+	         		// console.log(value);
+	         		this.sounds[this.nameIx] = this.info.stats[this.nameIx].sound = (value==null ? "" :
+	         			this.soundOptions[value+1].text);
+	         		localStorage.sounds = JSON.stringify(this.sounds);
+	         	}
+ 	         }
+	      },
+          methods: {
+          	 pingAPI: function (row) {
+				this.nameIx = -1;	
+		      	this.callAPI("ping="+(row.ping?2:0)+"&id="+row.item.id);
+		     },
+		     callAPI: function(cmd="") {
+				axios
+			      .get(this.qhost+'/data?'+cmd)
+			      .then(function (response) {
+			      	this.app.isServer = 1;
+			      	if (typeof response.data.stats != 'undefined')
+				     	response.data.stats.forEach(function (item) {
+				     		// console.log(item);
+					     	item.name=this.app.names[item.id];
+					     	item.sound=this.app.sounds[item.id];
+				     	});
+			      	this.app.isHot = (response.data.mode == 1);
+			      	this.app.qhost = 'http://'+response.data.ip;
+			      	this.app.info = response.data;
+			      	this.app.getSounds();
+			      })
+			      .catch(function (error) {
+			      	if (this.app.qhost == '') {
+			      		// If we copied the index.html file to a remote location, we need to try find the quiz hub server
+			      		// on the network
+			      		this.app.qhost = 'http://quiz.local';
+			      		console.log("Can not get to internal server, try remote one at "+this.app.qhost);
+			      	} else 
+ 		      			console.log(error);
+			      });
+		     },
+		     getSounds: function() {
+		     	if (!this.haveSounds)
+					axios
+				      .get(this.qhost+'/getsounds')
+				      .then(function (response) {
+				      	 if (!this.app.haveSounds)   // only once, even if we have delay due to dns/mdns lookup
+				      	 	response.data.sounds.forEach(function (item, ix) {
+				      	 		this.app.soundOptions.push({ value: ix, text: item });
+				      	 		if (!this.app.testSound) this.app.testSound = item;
+				      	 	});
+				      	this.app.haveSounds = true;
+				      	// console.log(this.app.soundOptions);
+				      })
+				      .catch(error => console.log(error));
+		     },
+		     playSound: function(name) {
+		     	if (name!='') {
+			     	console.log('Play: '+name);
+    	 			this.audio.src = this.qhost+'/sounds/'+name;
+					this.audio.play();
+				}
+		     },
+		     toggleTable: function() {
+		     	this.fields=(this.toggle ? ['name', 'wins', 'sound', 'ping'] :
+		     		['ip', 'battValue', 'ping', 'errorsAcc', 'errorsHot', 'errorsStop', 'errorsNode', 'lateWins']);
+		     	this.toggle = !this.toggle;
+		     	this.nameIx = -1;
+		     },
+		     rowClick: function(record, index) { // click on row to unhide name edit field
+		     	// console.log(record);
+		     	// console.log(index);
+		     	if (!this.toggle) {
+			     	this.name = record.name;
+			     	this.nameIx = index;
+			     	if (this.sounds[index]=='')
+			     		this.soundSelected = null;
+			     	else {
+			     		// find the text in soundOptions
+			     		this.soundOptions.forEach(function (item, ix) {
+			     			if (item.text == this.app.sounds[index])
+			     				this.app.soundSelected = ix-1;
+			     		})
+			     	}
+			    }
+		     }
+          }
+		});
+    </script>
+  </body>
+</html>
