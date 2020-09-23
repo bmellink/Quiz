@@ -13,10 +13,10 @@ Over time I created 3 generations:
 2. Wireless using nRF24L01 radio modules and an AVR based Arduino (Arduino Pro Mini ATMEGA328) using 2.4 Mhz communication
 3. Wireless using ESP8266 using standard WiFi communication (optional use ESP32 for the quiz hub)
 
-This Github repository contains the code for the 2nd and 3rd generation:
+This GitHub repository contains the code for the 2nd and 3rd generation:
 - [QuizNode](QuizNode) - Arduino code for the buttons of the 2nd generation (Arduino Pro Mini ATMEGA328/ nRF24L01 based)
 - [QuizHub](QuizHub) - Arduino code for the central hub of the 2nd generation (Arduino Pro Mini ATMEGA328/ nRF24L01 based with 4 segment display)
-- [QuizNode8266](QuizNode8266) - Arduinocode for the buttons of the 3rd generation (ESP8266 based)
+- [QuizNode8266](QuizNode8266) - Arduino code for the buttons of the 3rd generation (ESP8266 based)
 - [QuizHub8266](QuizHub8266) - Arduino code for the central hub of the 3rd generation (ESP8266 based, using a web interface)
 - [QuizHubEsp32](QuizHubEsp32) - Arduino code for the central hub of the 3rd generation (ESP32 based, using a web interface). This version handles quiz requests more reliable/ honest in the heat of the game due to the faster CPU
 and improved WiFi connection
@@ -50,11 +50,11 @@ The ESP8266 or ESP32 hub is powered by a standard USB connector/ power supply. T
 
 Hardware schematics will be added soon
 
-## Getting started wuth the 3rd generation (ESP8266/ESP32)
+## Getting started with the 3rd generation (ESP8266/ESP32)
 
 Starting steps:
 - Get enough ESP8266 boards (you need 1 for each button) and a board for the hub (ESP32 or ESP8266). I am using the NodeMCU-32S
-- Download this repository
+- Download or clone this repository
 - Prepare your Arduino environment for ESP8266 See https://arduino-esp8266.readthedocs.io/en/latest/ and for the ESP32 environment (make sure you have version 1.0.4 or higher) and add this URL to your board manager: https://dl.espressif.com/dl/package_esp32_index.json
 
 Steps for the hub:
