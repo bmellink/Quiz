@@ -1,5 +1,11 @@
 /*
-Quiz hub code based on ESP 8266. The hub code can only talk with Quiz hub ESP8266 nodes
+Quiz hub code based on ESP32. The hub code can only talk with Quiz hub ESP8266 nodes.
+Developed for the NodeMCU-ESP-32S. to programm, press the Boot switch
+
+The versions of the source code for the ESP8266 and ESP32 is almost identical. Differences:
+- ESP32 does not support NAT out of the box (see below)
+- blue led pin is revered on/off on my esp32 board
+- connection pins for manual switches are different (GPIO assignment)
 
 Will run Access Point with SSID of quizhub that runs a web server for:
 - communication with the Quiz Nodes (buttons)
@@ -7,7 +13,7 @@ Will run Access Point with SSID of quizhub that runs a web server for:
   The web browser does not need to know the IP address and can go to the URL: http://quiz.local to get to the server
 
 During boot operation we will also try to connect to a public WiFi access point. If this is succesfull a NAT router is setup
-to this public WiFi access point, so all clinets of our own Access Point can also get to the internet.
+to this public WiFi access point, so all clients of our own Access Point can also get to the internet.
 The PC/Mobile web browser has a choice to connect to our AP (and then still access the internet) or keep being connected
 to the existing SSID of the public WiFi access point to access the internet and just use the IP address allocated 
 by the public WiFi access point to address the quiz server.
@@ -31,38 +37,48 @@ json document. Layout:
   by the hub server, current play mode (Stop, Hot, Won, Test), if the node has won (1) or not (0) and if the mode can not 
   communicate with the hub (1=too many nodes)
 
-We also use LittleFS to define a fie system to store files we need in the html interface. Things like html, css, js files and
-images. The files are in the data folder of the Arduino sketch and you need to install the LiteFS data upload tool to upload
-the data folder to the internal flash memory of the ESP8266. The upload tool, once installed, will show up in the Tools menu
-of your Arduino environment as extra menu item "ESP8266 LittleFS Data Upload". See these links:
-- https://arduino-esp8266.readthedocs.io/en/latest/filesystem.html
-- https://github.com/earlephilhower/arduino-esp8266littlefs-plugin/releases
+We use SPIFFS to define a fie system to store files we need in the html interface. Things like html, css, js files and
+images. The files are in the data folder of the Arduino sketch and you need to install the SPIFFS data upload tool to upload
+the data folder to the internal flash memory of the ESP32. The upload tool, once installed, will show up in the Tools menu
+of your Arduino environment as extra menu item "ESP32 Sketch data upload". See these links:
+- https://github.com/me-no-dev/arduino-esp32fs-plugin
+
+NAT support. 
+Version 1.0.4 of ESP32 core does not support NAT (like ESP8266 does). This means that nodes connected to the soft AP side can not
+reach the internet. This is fine for the quiz nodes and the web browser can connect to the quiz hub through the second IP address provided
+by the DHCP server of the local Wifi hotspot you are connected to. However, when this is not possible and you want to connect to
+the quizhub SSID and get the rest of the JS files from the Internet, you should configure a NAT based router. For ESP core
+1.0.4, 3rd party NAT support is provided here: https://github.com/Lucy2003/ESP32-NAPT-For-Arduino. Then uncomment the NAT_SUPPORT
+directive.
 
 Still todo:
 - If the server is rebooted the clients do not automatically reconnect (Wifi issue)
+- http://quiz.local mdns is only advertised on the host network (not our own network)
 - index.html:
-  - start/stop bottons
-  - show stats screen
-  - call the API: once every second or so
-  - create test
-
-Features to add:
-  - Store team names somewhere (maybe in local storage in vue.js)
-  - counting backwards (10 secs to answer)
-  - 7 segment display?
+  - create button for test mode
 
 */
 
-// Core Arduino ESP8266 libraries used
-#include <ESP8266WiFi.h>
+// #define NAT_SUPPORT
+
+// Core Arduino ESP32 libraries used
+#include "FS.h"
+#include "SPIFFS.h"
+#include <WiFi.h>
+#include <WiFiMulti.h>  // not sure we need this
 #include <WiFiClient.h>
-#include <ESP8266WebServer.h>
-#include <ESP8266mDNS.h>
-#include <ESP8266HTTPClient.h>
-#include <LittleFS.h>  
-#include <lwip/napt.h>
+#include <WebServer.h>
+#include <ESPmDNS.h>
+#include <HTTPClient.h>
+
 #include <lwip/dns.h>
-#include <dhcpserver.h>
+
+#ifdef NAT_SUPPORT
+  #include "lwip/lwip_napt.h"
+  #define STATION_IF      0x00
+  #define SOFTAP_IF       0x01
+#endif
+
 
 // Additional custom libraries used (installed through Library Manager or from Github)
 #include <WiFiManager.h>    // https://github.com/tzapu/WiFiManager captive portal to connect to WiFi
@@ -71,22 +87,18 @@ Features to add:
 
 // ---------------------- configuration parameters -------------------------
 #define QUIZSERVER "quiz"   // the name on the local network of our quiz hub server will be http://quiz.local
-#define APSSID "quizhub"    // SSID of our advertised access point
+#define APSSID "quizhub"    // SSID of our advertised access point for the quiz nodes
 #define APPSK  ""           // Password of access point (empty is none)
 
 // Hardware PIN connections
-#define LEDPIN 2          // blue led 0=on, 1=off
-#define PIN_HOT 5      // enter hot mode to all nodes GPIO5 => D1 mark
-#define PIN_STOP 4      // set stop mode to all nodes GPIO4 => D2
-#define PIN_STATUS 0    // show statistics of all nodes and run connection test (will turn on/off all button LEDs) GPIO0 => D3
+#define LEDPIN 2            // blue led 1=on, 0=off
+#define PIN_HOT 5           // enter hot mode to all nodes GPIO5 => GPIO5 mark
+#define PIN_STOP 18         // set stop mode to all nodes GPIO4 => GPIO18
+#define PIN_STATUS 19       // show statistics of all nodes and run connection test (will turn on/off all button LEDs) GPIO19
 #define WIFIPORTALPIN PIN_HOT   // trigger WiFi portal during reboot 
 
-// define NAT port ranges
-#define NAPT 1000
-#define NAPT_PORT 10
-
 // We have 2 webservers defined on port 80, of which only 1 runs at a time
-ESP8266WebServer server(80);    // web server for normal Quiz function
+WebServer server(80);    // web server for normal Quiz function
 WiFiManager wm;                 // web server for captive portal to configure WiFi parameters
 const char* ssid = APSSID;
 const char* password = APPSK;
@@ -127,15 +139,15 @@ int pingid = -1;
 // this handler is called by the server object on every GET to see if we have the file
 class fileHandler : public RequestHandler {
   bool canHandle(HTTPMethod method, String uri) {
-    return LittleFS.exists(ESP8266WebServer::urlDecode(uri));
+    return SPIFFS.exists(WebServer::urlDecode(uri));
   }
-  bool handle(ESP8266WebServer& server, HTTPMethod requestMethod, String requestUri) {   
-    requestUri = ESP8266WebServer::urlDecode(requestUri);
+  bool handle(WebServer& server, HTTPMethod requestMethod, String requestUri) {   
+    requestUri = WebServer::urlDecode(requestUri);
     // Serial.print("Handle " + requestUri + "type=");
     String contentType;
-    contentType = mime::getContentType(requestUri);
+    contentType = getContentType(requestUri);
     // Serial.println(contentType);
-    File rFile = LittleFS.open(requestUri, "r");
+    File rFile = SPIFFS.open(requestUri);
     
     if (rFile) {
       int fsizeFile = rFile.size();
@@ -149,12 +161,50 @@ class fileHandler : public RequestHandler {
     }
     return true;
   }
+  String getContentType(String filename) {
+    // from https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
+    if (filename.endsWith(".htm")) {
+      return "text/html";
+    } else if (filename.endsWith(".html")) {
+      return "text/html";
+    } else if (filename.endsWith(".css")) {
+      return "text/css";
+    } else if (filename.endsWith(".js")) {
+      return "application/javascript";
+    } else if (filename.endsWith(".png")) {
+      return "image/png";
+    } else if (filename.endsWith(".gif")) {
+      return "image/gif";
+    } else if (filename.endsWith(".jpg")) {
+      return "image/jpeg";
+    } else if (filename.endsWith(".ico")) {
+      return "image/x-icon";
+    } else if (filename.endsWith(".xml")) {
+      return "text/xml";
+    } else if (filename.endsWith(".pdf")) {
+      return "application/x-pdf";
+    } else if (filename.endsWith(".zip")) {
+      return "application/x-zip";
+    } else if (filename.endsWith(".gz")) {
+      return "application/x-gzip";
+    } else if (filename.endsWith(".mp3")) {
+      return "audio/mpeg";
+    } else if (filename.endsWith(".mpeg")) {
+      return "audio/mpeg";
+    } else if (filename.endsWith(".wav")) {
+      return "audio/wav";
+    } else if (filename.endsWith(".aac")) {
+      return "audio/aac";
+    }
+    return "text/plain";
+  }
+
 } fileHandler;
 
 
 void setup(void) {
   pinMode(LEDPIN, OUTPUT);
-  digitalWrite(LEDPIN, 0); // turn on LED
+  digitalWrite(LEDPIN, 1); // turn on LED
   pinMode(WIFIPORTALPIN, INPUT_PULLUP);
   pinMode(PIN_HOT,   INPUT_PULLUP);
   pinMode(PIN_STOP,  INPUT_PULLUP);
@@ -165,12 +215,19 @@ void setup(void) {
   Serial.println("Quiz hub");
 
   // mount file system
-  if (LittleFS.begin()) Serial.println("File system mounted. Files:");
+ 
+  if (!SPIFFS.begin(false)) {
+    Serial.println("File system not mounted, maybe we forgot to format/upload so we do try that");
+    if (!SPIFFS.begin(true)) {
+      Serial.println("Failure to mount file system - stop");
+      return;
+    }
+  }
 
   // test code, see if we uploaded all required files in the file system flash
   displayDir(String("/sounds"));
 
-  WiFi.hostname(hostname);
+  WiFi.setHostname(hostname);   
   // define relevant captive portal settings
   wm.setClass("invert");                // set dark theme
   wm.setConfigPortalTimeout(40);        // auto close configportal after n seconds
@@ -208,30 +265,23 @@ void setup(void) {
     Serial.print("Local IP address: ");
     Serial.println(WiFi.localIP());
     Serial.printf("\nSTA: %s (dns: %s / %s)\n", WiFi.localIP().toString().c_str(), WiFi.dnsIP(0).toString().c_str(), WiFi.dnsIP(1).toString().c_str());
- 
+
+#ifdef NAT_SUPPORT
     // now we start the NAT service
-    // first give DNS servers to AP side
-    dhcps_set_dns(0, WiFi.dnsIP(0));
-    dhcps_set_dns(1, WiFi.dnsIP(1));
-    // init NAT
-    err_t ret = ip_napt_init(NAPT, NAPT_PORT);
-    Serial.printf("ip_napt_init(%d,%d): ret=%d (OK=%d)\n", NAPT, NAPT_PORT, (int)ret, (int)ERR_OK);
-    if (ret == ERR_OK) {
-      ret = ip_napt_enable_no(SOFTAP_IF, 1);
-      Serial.printf("ip_napt_enable_no(SOFTAP_IF): ret=%d (OK=%d)\n", (int)ret, (int)ERR_OK);
-      if (ret == ERR_OK) {
-        Serial.printf("WiFi Network '%s' is now NATed behind '%s'\n", ssid, wm.getWiFiSSID().c_str());
-      }
-    }
-    if (ret != ERR_OK) {
-      Serial.printf("NAT initialization failed\n");
-    }
+    ip_napt_init(IP_NAPT_MAX, IP_PORTMAP_MAX);
+    // u32_t napt_netif_ip = 0xC0A80401; // Set to ip address of softAP netif (Default is 192.168.4.1)
+    // ip_napt_enable(htonl(napt_netif_ip), 1);
+    ip_napt_enable_no(SOFTAP_IF, 1);
+    Serial.printf("WiFi Network '%s' is now NATed behind '%s'\n", ssid, wm.getWiFiSSID().c_str());
+
+#endif
+
   } 
   if (MDNS.begin(hostname)) {
     Serial.println(String("MDNS started and responds to http://")+hostname+".local");
   }
 
-  digitalWrite(LEDPIN, 1); // turn off LED
+  digitalWrite(LEDPIN, 0); // turn off LED
 
 
   // configure standard Quiz web server
@@ -292,7 +342,7 @@ void loop(void) {
   }
   // normal processing
   server.handleClient();
-  MDNS.update();  
+  // MDNS.update();   // !!! This is an esp8266 library call that does not exists in ESP32
 }
 
 void displaystats() {
@@ -345,7 +395,7 @@ void handleNodeAPI() {
   const size_t capacity = JSON_OBJECT_SIZE(4) + 61;
   StaticJsonDocument<capacity> doc;
   IPAddress rIP = server.client().remoteIP();
-  digitalWrite(LEDPIN, 0); // turn on
+  digitalWrite(LEDPIN, 1); // turn on
   doc["err"] = 0;
   // Serial.print("client IP= ");
   // Serial.println(rIP);
@@ -391,7 +441,7 @@ void handleNodeAPI() {
 
   // Serial.printf("Sending: %s\n ", output);
   server.send(200, "application/json", output);
-  digitalWrite(LEDPIN, 1); // turn off
+  digitalWrite(LEDPIN, 0); // turn off
 }
 
 void handleUIAPI() {
@@ -405,6 +455,7 @@ void handleUIAPI() {
   //    ]}
   const size_t capacity = JSON_ARRAY_SIZE(MAXNODES) + JSON_OBJECT_SIZE(5) + MAXNODES*JSON_OBJECT_SIZE(9) + 472; // see https://arduinojson.org/v6/assistant/
   StaticJsonDocument<capacity> doc;
+  digitalWrite(LEDPIN, 1); // turn on LED
 
   for (int i = 0; i < server.args(); i++) {
     // Serial.printf("=> %s: %s\n", server.argName(i).c_str(), server.arg(i).c_str());
@@ -440,6 +491,7 @@ void handleUIAPI() {
 
   // Serial.printf("Sending: %s\n", output);
   server.send(200, "application/json", output);
+  digitalWrite(LEDPIN, 0); // turn off LED
 }
 
 #define MAXSOUNDFILE 30
@@ -454,13 +506,19 @@ void handleSoundAPI() {
   StaticJsonDocument<capacity> doc;
   int n=0;
   Serial.println("Getsounds API");
-  Dir dir = LittleFS.openDir("/sounds");
-  while (dir.next()) {
-    if (dir.fileSize()) {
-       doc["sounds"][n] = String("/sounds/") + dir.fileName(); 
-       n++;
+  File dir = SPIFFS.open("/sounds");
+  if (dir.isDirectory()) {
+    File file = dir.openNextFile();
+    while (file) {
+      Serial.println(file.name());
+      if (file.size()>0) {
+         doc["sounds"][n] = String(file.name());
+         n++;
+      }
+      file = dir.openNextFile();
     }
   }
+  Serial.println(n);
   if (n==0) doc["sounds"] = "";
   
   char output[600];
@@ -506,17 +564,19 @@ void sendNode( byte node, byte cmd) {
   }
 }
 void handleRoot() {
-  digitalWrite(LEDPIN, 0);
-  Serial.println("Root");
-  Serial.println(server.client().remoteIP());
+  digitalWrite(LEDPIN, 1);
+  Serial.print("Root call from ");
+  Serial.print(server.client().remoteIP());
+  Serial.print(" server= ");
   String serverip = server.client().localIP().toString();
+  Serial.println(serverip);
   server.send(200, "text/html", "<html>Welcome to the Quiz server! Start <a href='http://"+ serverip +"/index.html'>here</a></html>");
   delay(100);
-  digitalWrite(LEDPIN, 1);
+  digitalWrite(LEDPIN, 0);
 }
 
 void handleNotFound() {
-  digitalWrite(LEDPIN, 0);
+  digitalWrite(LEDPIN, 1);
   String message = "File Not Found\n\n";
   message += "Quiz URI: ";
   message += server.uri();
@@ -530,18 +590,27 @@ void handleNotFound() {
     message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
   }
   server.send(404, "text/plain", message);
-  digitalWrite(LEDPIN, 1);
+  digitalWrite(LEDPIN, 0);
 }
 
 void displayDir(String dirname) {
-  // display the root directory of the file system (code to be removed)
-  Dir dir = LittleFS.openDir(dirname);
-  while (dir.next()) {
-    Serial.print(dir.fileName());
-    Serial.print(" ");
-    if (dir.fileSize()) {
-        File f = dir.openFile("r");
-        Serial.println(f.size());
-    } else Serial.println();
+  // display a directory of the file system 
+  File root = SPIFFS.open(dirname);
+  Serial.println(dirname);
+  if (!root) {
+    Serial.println("- failed to open directory");
+    return;
+  }
+  if (!root.isDirectory()) {
+    Serial.println(" - not a directory");
+    return;
+  }
+
+  File file = root.openNextFile();
+  while (file) {
+    Serial.print(file.name());
+    Serial.print("\t ");
+    Serial.println(file.size());
+    file = root.openNextFile();
   }
 }
