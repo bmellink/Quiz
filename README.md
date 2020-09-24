@@ -80,12 +80,18 @@ Steps for each button:
 
 ## Web Interface
 
-You get to the QuizHub web server by pointing your browser (phone/computer/tablet) to http://quiz.local. As soon as a Quiz Node is booted, the node should show up in the table:
+When the QuizHub can not connect to the WiFi the Blue LED stays on and the configuration portal is loaded (WiFiManager). You then have to connect to the WiFi network "quizhub" and point your browser to 192.168.4.1 (on most phones this happens automatically). The configuration portal allows you to configure your WiFi parameters:
+
+![Quiz Hub Web config](img/QuizHubWebConfig.png?raw=true "Quiz Hub Web Config")
+
+You can also force the WiFi portal but keeping the Start/Hot button pressed while rebooting.
+
+As soon as a Quiz Node is booted and connected to your WiFi, you get to the QuizHub web server by pointing your browser (phone/computer/tablet) to http://quiz.local. Any new node should show up in the table:
 
 ![Quiz Hub Web site](img/QuizHubWeb.png?raw=true "Quiz Hub Web Site")
 
-You can assign a name and optional sound to each button. The sound will play through the speakers of the device showing the web site. The team name and selected sound are stored within the browser local storage.
+You can assign a name and optional sound to each button by clicking on a row in the table. The configured sound will play through the speakers of the device showing the web site. The team name and selected sound are stored within the browser local storage. Please note that on IOS (Apple) devices you should play a sound once (manually) by clicking one of the play button before sounds work.
 
-The statistics shows the battery level and communication statistics:
+The statistics button allows you to see the battery level of all hubs and various communication statistics:
 
 ![Quiz Hub Web site statistics](img/QuizHubWebStats.png?raw=true "Quiz Hub Web Site Stats")
