@@ -91,10 +91,16 @@ Still todo:
 #define APPSK  ""           // Password of access point (empty is none)
 
 // Hardware PIN connections
-#define LEDPIN 2            // blue led 1=on, 0=off
+#define LEDBLUEPIN 2            // blue led (on board LED and also extern connected to GPIO02) 1=on, 0=off
+#define LEDGREENPIN 22      // green LED: when a node has won
+#define LEDREDPIN 23        // red LED: when "hot" (nodes are flashing)
+#define LEDON 1             // for LEDs: value to digitalwrite to turn led off
+#define LEDOFF 0            // for LEDs: value to digitalwrite to turn led on
 #define PIN_HOT 5           // enter hot mode to all nodes GPIO5 => GPIO5 mark
 #define PIN_STOP 18         // set stop mode to all nodes GPIO4 => GPIO18
 #define PIN_STATUS 19       // show statistics of all nodes and run connection test (will turn on/off all button LEDs) GPIO19
+#define SWITCH_OFF 0        // DigitalRead for PIN_HOT, PIN_STOP, PIN_STATUS to show the switch is not pressed
+#define SWITCH_ON 1         // idem for switch is pressed
 #define WIFIPORTALPIN PIN_HOT   // trigger WiFi portal during reboot 
 
 // We have 2 webservers defined on port 80, of which only 1 runs at a time
@@ -203,8 +209,12 @@ class fileHandler : public RequestHandler {
 
 
 void setup(void) {
-  pinMode(LEDPIN, OUTPUT);
-  digitalWrite(LEDPIN, 1); // turn on LED
+  pinMode(LEDBLUEPIN, OUTPUT);
+  pinMode(LEDREDPIN, OUTPUT);
+  pinMode(LEDGREENPIN, OUTPUT);
+  digitalWrite(LEDBLUEPIN, LEDON); // turn on blue LED
+  digitalWrite(LEDREDPIN, LEDOFF);
+  digitalWrite(LEDGREENPIN, LEDOFF);
   pinMode(WIFIPORTALPIN, INPUT_PULLUP);
   pinMode(PIN_HOT,   INPUT_PULLUP);
   pinMode(PIN_STOP,  INPUT_PULLUP);
@@ -232,7 +242,7 @@ void setup(void) {
   wm.setClass("invert");                // set dark theme
   wm.setConfigPortalTimeout(40);        // auto close configportal after n seconds
 
-  if (digitalRead(WIFIPORTALPIN) == LOW) {
+  if (digitalRead(WIFIPORTALPIN)==SWITCH_ON) {
     Serial.println("Button pressed at boot, wipe WiFi settings");
     wm.resetSettings(); // wipe settings to force 
   }
@@ -281,7 +291,7 @@ void setup(void) {
     Serial.println(String("MDNS started and responds to http://")+hostname+".local");
   }
 
-  digitalWrite(LEDPIN, 0); // turn off LED
+  digitalWrite(LEDBLUEPIN, LEDOFF); // turn off LED
 
 
   // configure standard Quiz web server
@@ -308,8 +318,10 @@ void loop(void) {
     }
   }
   
-  if ((!digitalRead(PIN_STOP) && flashtime+1000 < millis()) || tell2cmd==0) {
+  if (((digitalRead(PIN_STOP)==SWITCH_ON) && flashtime+1000 < millis()) || tell2cmd==0) {
     Serial.println(F("Setting stop mode.."));
+    digitalWrite(LEDREDPIN, LEDOFF);
+    digitalWrite(LEDGREENPIN, LEDOFF);
     sendAllNodes(CMD_STOP);
     wonNode = -1;
     tell2cmd = -1;
@@ -317,17 +329,21 @@ void loop(void) {
     flashtime = millis();
   } 
   
-  if ((!digitalRead(PIN_HOT) && flashtime+1000 < millis()) || tell2cmd==1) {
+  if (((digitalRead(PIN_HOT)==SWITCH_ON) && flashtime+1000 < millis()) || tell2cmd==1) {
     Serial.println(F("Setting hot mode.."));
     sendAllNodes(CMD_HOT); // set hot to all buttons
     quizMode = mode_hot;
+    digitalWrite(LEDREDPIN, LEDON);
+    digitalWrite(LEDGREENPIN, LEDOFF);
     wonNode = -1;
     tell2cmd = -1;
     flashtime = millis();
   }
 
-  if ((!digitalRead(PIN_STATUS) && flashtime+1000 < millis()) || tell2cmd==2) {
+  if (((digitalRead(PIN_STATUS)==SWITCH_ON) && flashtime+1000 < millis()) || tell2cmd==2) {
     flashtime = millis();
+    digitalWrite(LEDGREENPIN, LEDOFF);
+    digitalWrite(LEDREDPIN, LEDOFF);
     displaystats();
     if (sw || tell2cmd==2) sendAllNodes(CMD_WON); else  sendAllNodes(CMD_STOP);
     sw = !sw;
@@ -395,7 +411,7 @@ void handleNodeAPI() {
   const size_t capacity = JSON_OBJECT_SIZE(4) + 61;
   StaticJsonDocument<capacity> doc;
   IPAddress rIP = server.client().remoteIP();
-  digitalWrite(LEDPIN, 1); // turn on
+  digitalWrite(LEDBLUEPIN, LEDON); // turn on
   doc["err"] = 0;
   // Serial.print("client IP= ");
   // Serial.println(rIP);
@@ -421,6 +437,8 @@ void handleNodeAPI() {
       wonNode = curNode;
       wins[curNode]++;
       tell2stop = true; // need to tell others to stop
+      digitalWrite(LEDGREENPIN, LEDON);
+      digitalWrite(LEDREDPIN, LEDOFF);
     } else {
       // Serial.printf("Node %d press\n", curNode);
       if (curNode == wonNode && quizMode == mode_won) lateWins[curNode]++;
@@ -441,7 +459,7 @@ void handleNodeAPI() {
 
   // Serial.printf("Sending: %s\n ", output);
   server.send(200, "application/json", output);
-  digitalWrite(LEDPIN, 0); // turn off
+  digitalWrite(LEDBLUEPIN, LEDOFF); // turn off
 }
 
 void handleUIAPI() {
@@ -455,7 +473,7 @@ void handleUIAPI() {
   //    ]}
   const size_t capacity = JSON_ARRAY_SIZE(MAXNODES) + JSON_OBJECT_SIZE(5) + MAXNODES*JSON_OBJECT_SIZE(9) + 472; // see https://arduinojson.org/v6/assistant/
   StaticJsonDocument<capacity> doc;
-  digitalWrite(LEDPIN, 1); // turn on LED
+  digitalWrite(LEDBLUEPIN, LEDON); // turn on LED
 
   for (int i = 0; i < server.args(); i++) {
     // Serial.printf("=> %s: %s\n", server.argName(i).c_str(), server.arg(i).c_str());
@@ -491,7 +509,7 @@ void handleUIAPI() {
 
   // Serial.printf("Sending: %s\n", output);
   server.send(200, "application/json", output);
-  digitalWrite(LEDPIN, 0); // turn off LED
+  digitalWrite(LEDBLUEPIN, LEDOFF); // turn off LED
 }
 
 #define MAXSOUNDFILE 30
@@ -564,7 +582,7 @@ void sendNode( byte node, byte cmd) {
   }
 }
 void handleRoot() {
-  digitalWrite(LEDPIN, 1);
+  digitalWrite(LEDBLUEPIN, LEDON);
   Serial.print("Root call from ");
   Serial.print(server.client().remoteIP());
   Serial.print(" server= ");
@@ -572,11 +590,11 @@ void handleRoot() {
   Serial.println(serverip);
   server.send(200, "text/html", "<html>Welcome to the Quiz server! Start <a href='http://"+ serverip +"/index.html'>here</a></html>");
   delay(100);
-  digitalWrite(LEDPIN, 0);
+  digitalWrite(LEDBLUEPIN, LEDOFF);
 }
 
 void handleNotFound() {
-  digitalWrite(LEDPIN, 1);
+  digitalWrite(LEDBLUEPIN, LEDON);
   String message = "File Not Found\n\n";
   message += "Quiz URI: ";
   message += server.uri();
@@ -590,7 +608,7 @@ void handleNotFound() {
     message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
   }
   server.send(404, "text/plain", message);
-  digitalWrite(LEDPIN, 0);
+  digitalWrite(LEDBLUEPIN, LEDOFF);
 }
 
 void displayDir(String dirname) {

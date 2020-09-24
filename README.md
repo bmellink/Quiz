@@ -21,7 +21,7 @@ This GitHub repository contains the code for the 2nd and 3rd generation:
 - [QuizHubEsp32](QuizHubEsp32) - Arduino code for the central hub of the 3rd generation (ESP32 based, using a web interface). This version handles quiz requests more reliable/ honest in the heat of the game due to the faster CPU
 and improved WiFi connection
 
-Please note you can not mix 2nd and 3rd generation buttons and hub, as the communication protocol is different.
+Please note you cannot mix 2nd and 3rd generation buttons and hub, as the communication protocol is different.
 
 ## Hardware 2nd generation (AVR)
 
@@ -29,7 +29,7 @@ The quiz button is powered by a single 1,5V battery. The hardware has a voltage 
 
 ![Quiz Button back](img/QuizButton_AVR.png?raw=true "Quiz Button back")
 
-The quiz hub has a 4 digit 7 segment display to show status and results and uses hardware push buttons to start and stop the quiz questions.
+The quiz hub has a 4-digit 7 segment display to show status and results and uses hardware push buttons to start and stop the quiz questions.
 
 ![Quiz Hub](img/QuizHub_AVR.png?raw=true "Quiz Hub")
 
@@ -44,9 +44,14 @@ The quiz button is powered by 2 AA batteries making the supply 3V (on average). 
 
 ![Quiz Button back](img/QuizButton_ESP8266.png?raw=true "Quiz Button back")
 
-The ESP8266 or ESP32 hub is powered by a standard USB connector/ power supply. The gane can be activated using buttons or using the web interface of the built in web server.
+The ESP8266 or ESP32 hub is powered by a standard USB connector/ power supply. Gameplay can be activated using buttons or using the web interface of the built-in web server. You can defined in the source if pressing a button
+generates a 1 (high) or 0 (low). In the picture below I use TTP223 based touch button modules for the switches (https://www.aliexpress.com/item/32964219843.html).
 
-![Quiz Hub](img/QuizHub_ESP8266.png?raw=true "Quiz Hub")
+![Quiz Hub ESP8266](img/QuizHub_ESP8266.png?raw=true "Quiz Hub ESP8266")
+
+![Quiz Hub ESP32](img/QuizHubESP32A.png?raw=true "Quiz Hub ESP32")
+
+![Quiz Hub ESP32](img/QuizHubESP32B.png?raw=true "Quiz Hub ESP32")
 
 Hardware schematics will be added soon
 
@@ -66,12 +71,21 @@ https://github.com/earlephilhower/arduino-esp8266littlefs-plugin/releases)
 - Compile and upload the QuizHub8266 or QuizHubEsp32 sketch
 - Point your phone or laptop to the access point "quizhub" and point your browser to http://192.168.4.1
 - Configure your local Wifi network and wait for the quizhub to reboot
-- You can now get to the quizhub from your normal Wifi network by pointing ypur browser to http://quiz.local
+- You can now get to the quizhub from your normal Wifi network by pointing your browser to http://quiz.local
 
 Steps for each button:
 - Add the circuit to allow measurement of the battery voltage (optional) and current driver for the external LED
 - Compile and upload the QuizNode8266 sketch (optionally change the source in case you want to the use the built in LED instead of an external LED)
-- Once the button restarts, you should see en entry appear on the web server interface of the hub and you can assign a name and MP3 file to play when the given button wins. The MP3 file will be played on the phone or web browser used to control the quiz hub
+- Once the button restarts, you should see an entry appear on the web server interface of the hub and you can assign a name and MP3 file to play when the given button wins. The MP3 file will be played on the phone or web browser used to control the quiz hub
 
+## Web Interface
 
+You get to the QuizHub web server by pointing your browser (phone/computer/tablet) to http://quiz.local. As soon as a Quiz Node is booted, the node should show up in the table:
 
+![Quiz Hub Web site](img/QuizHubWeb.png?raw=true "Quiz Hub Web Site")
+
+You can assign a name and optional sound to each button. The sound will play through the speakers of the device showing the web site. The team name and selected sound are stored within the browser local storage.
+
+The statistics shows the battery level and communication statistics:
+
+![Quiz Hub Web site statistics](img/QuizHubWebStats.png?raw=true "Quiz Hub Web Site Stats")
