@@ -43,6 +43,9 @@ the data folder to the internal flash memory of the ESP32. The upload tool, once
 of your Arduino environment as extra menu item "ESP32 Sketch data upload". See these links:
 - https://github.com/me-no-dev/arduino-esp32fs-plugin
 
+Buttons for manual start/stop/test are implemented using the ESP32 capcitive touch. You only need to feed
+a wire to the outside of your box and touch it to "touch" the button.
+
 NAT support. 
 Version 1.0.4 of ESP32 core does not support NAT (like ESP8266 does). This means that nodes connected to the soft AP side can not
 reach the internet. This is fine for the quiz nodes and the web browser can connect to the quiz hub through the second IP address provided
@@ -94,14 +97,15 @@ Still todo:
 #define LEDBLUEPIN 2            // blue led (on board LED and also extern connected to GPIO02) 1=on, 0=off
 #define LEDGREENPIN 22      // green LED: when a node has won
 #define LEDREDPIN 23        // red LED: when "hot" (nodes are flashing)
+#define PIN_HOT 4           // enter hot mode to all nodes GPIO5 => GPIO4 Touch
+#define PIN_STOP 33         // set stop mode to all nodes GPIO4 => GPIO33 Touch
+#define PIN_TEST 15         // run connection test (will turn on/off all button LEDs) GPIO15 Touch
+#define WIFIPORTALPIN PIN_HOT   // trigger WiFi portal during reboot 
+
+// parameters
 #define LEDON 1             // for LEDs: value to digitalwrite to turn led off
 #define LEDOFF 0            // for LEDs: value to digitalwrite to turn led on
-#define PIN_HOT 5           // enter hot mode to all nodes GPIO5 => GPIO5 mark
-#define PIN_STOP 18         // set stop mode to all nodes GPIO4 => GPIO18
-#define PIN_STATUS 19       // show statistics of all nodes and run connection test (will turn on/off all button LEDs) GPIO19
-#define SWITCH_OFF 0        // DigitalRead for PIN_HOT, PIN_STOP, PIN_STATUS to show the switch is not pressed
-#define SWITCH_ON 1         // idem for switch is pressed
-#define WIFIPORTALPIN PIN_HOT   // trigger WiFi portal during reboot 
+#define TOUCHTHRESHOLD 50   // value from touchRead() to consider the button to be touched
 
 // We have 2 webservers defined on port 80, of which only 1 runs at a time
 WebServer server(80);    // web server for normal Quiz function
@@ -215,10 +219,6 @@ void setup(void) {
   digitalWrite(LEDBLUEPIN, LEDON); // turn on blue LED
   digitalWrite(LEDREDPIN, LEDOFF);
   digitalWrite(LEDGREENPIN, LEDOFF);
-  pinMode(WIFIPORTALPIN, INPUT_PULLUP);
-  pinMode(PIN_HOT,   INPUT_PULLUP);
-  pinMode(PIN_STOP,  INPUT_PULLUP);
-  pinMode(PIN_STATUS,INPUT_PULLUP);
   Serial.begin(115200);
 
   Serial.println();
@@ -242,7 +242,7 @@ void setup(void) {
   wm.setClass("invert");                // set dark theme
   wm.setConfigPortalTimeout(40);        // auto close configportal after n seconds
 
-  if (digitalRead(WIFIPORTALPIN)==SWITCH_ON) {
+  if (getTouch(WIFIPORTALPIN)) {
     Serial.println("Button pressed at boot, wipe WiFi settings");
     wm.resetSettings(); // wipe settings to force 
   }
@@ -293,7 +293,6 @@ void setup(void) {
 
   digitalWrite(LEDBLUEPIN, LEDOFF); // turn off LED
 
-
   // configure standard Quiz web server
   server.on("/", handleRoot);
   server.on("/quiz", handleNodeAPI);
@@ -318,7 +317,7 @@ void loop(void) {
     }
   }
   
-  if (((digitalRead(PIN_STOP)==SWITCH_ON) && flashtime+1000 < millis()) || tell2cmd==0) {
+  if ((getTouch(PIN_STOP) && flashtime+1000 < millis()) || tell2cmd==0) {
     Serial.println(F("Setting stop mode.."));
     digitalWrite(LEDREDPIN, LEDOFF);
     digitalWrite(LEDGREENPIN, LEDOFF);
@@ -329,7 +328,7 @@ void loop(void) {
     flashtime = millis();
   } 
   
-  if (((digitalRead(PIN_HOT)==SWITCH_ON) && flashtime+1000 < millis()) || tell2cmd==1) {
+  if ((getTouch(PIN_HOT) && flashtime+1000 < millis()) || tell2cmd==1) {
     Serial.println(F("Setting hot mode.."));
     sendAllNodes(CMD_HOT); // set hot to all buttons
     quizMode = mode_hot;
@@ -340,7 +339,7 @@ void loop(void) {
     flashtime = millis();
   }
 
-  if (((digitalRead(PIN_STATUS)==SWITCH_ON) && flashtime+1000 < millis()) || tell2cmd==2) {
+  if ((getTouch(PIN_TEST) && flashtime+1000 < millis()) || tell2cmd==2) {
     flashtime = millis();
     digitalWrite(LEDGREENPIN, LEDOFF);
     digitalWrite(LEDREDPIN, LEDOFF);
@@ -631,4 +630,16 @@ void displayDir(String dirname) {
     Serial.println(file.size());
     file = root.openNextFile();
   }
+}
+
+// capacitive touch routine. To filter out spike noises we require the touchRead() value to be 100ms at a filter below
+// the defined threshhold
+int getTouch(int port) {
+  int t;
+  for (int i=0; i<10; i++) {
+    t=touchRead(port);
+    if (t>TOUCHTHRESHOLD) return 0;
+    delay(10);
+  }
+  return 1;
 }

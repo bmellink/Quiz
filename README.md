@@ -2,6 +2,8 @@
 
 This project was based on the need to create a set of "Quiz" buttons for a fun family evening to support a Quiz setting, where multiple teams have to answer quiz questions and you need to know who presses the Quiz-button first.
 
+![Quiz Hub ESP32](img/QuizHubESP32Outside.png?raw=true "Quiz Hub ESP32")
+
 ## Overview
 
 I bought 4 large pushbuttons on Sparkfun (see https://www.sparkfun.com/products/9181) and mounted the buttons on a piece of plywood, supported by some large screws. The Arduino hardware for each button is mounted underneath.
@@ -44,16 +46,15 @@ The quiz button is powered by 2 AA batteries making the supply 3V (on average). 
 
 ![Quiz Button back](img/QuizButton_ESP8266.png?raw=true "Quiz Button back")
 
-The ESP8266 or ESP32 hub is powered by a standard USB connector/ power supply. Gameplay can be activated using buttons or using the web interface of the built-in web server. You can defined in the source if pressing a button
-generates a 1 (high) or 0 (low). In the picture below I use TTP223 based touch button modules for the switches (https://www.aliexpress.com/item/32964219843.html).
+The ESP8266 or ESP32 hub is powered by a standard USB connector/ power supply. Gameplay can be activated using buttons or using the web interface of the built-in web server. In the picture below, standard switches are used
+as buttons. In the ESP32 version the capacitive "Touch" feature of the ESP32 chip is used, so you only need to
+feed the wires from the "Touch" pins to the outside of your box.
 
 ![Quiz Hub ESP8266](img/QuizHub_ESP8266.png?raw=true "Quiz Hub ESP8266")
 
-![Quiz Hub ESP32](img/QuizHubESP32A.png?raw=true "Quiz Hub ESP32")
+![Quiz Hub ESP32 Inside](img/QuizHubESP32Inside.png?raw=true "Quiz Hub ESP32 Inside")
 
-![Quiz Hub ESP32](img/QuizHubESP32B.png?raw=true "Quiz Hub ESP32")
-
-Hardware schematics will be added soon
+TODO: Adding hardware schematics
 
 ## Getting started with the 3rd generation (ESP8266/ESP32)
 
@@ -76,7 +77,7 @@ https://github.com/earlephilhower/arduino-esp8266littlefs-plugin/releases)
 Steps for each button:
 - Add the circuit to allow measurement of the battery voltage (optional) and current driver for the external LED
 - Compile and upload the QuizNode8266 sketch (optionally change the source in case you want to the use the built in LED instead of an external LED)
-- Once the button restarts, you should see an entry appear on the web server interface of the hub and you can assign a name and MP3 file to play when the given button wins. The MP3 file will be played on the phone or web browser used to control the quiz hub
+- Once the button restarts, it will connect to the quizhub WiFi network and ping the server.
 
 ## Web Interface
 
@@ -86,11 +87,13 @@ When the QuizHub can not connect to the WiFi the Blue LED stays on and the confi
 
 You can also force the WiFi portal but keeping the Start/Hot button pressed while rebooting.
 
-As soon as a Quiz Node is booted and connected to your WiFi, you get to the QuizHub web server by pointing your browser (phone/computer/tablet) to http://quiz.local. Any new node should show up in the table:
+As soon as a Quiz Node is booted and connected to your configured WiFi, you get to the QuizHub web server by pointing your browser (phone/computer/tablet) to http://quiz.local. The quizhub will also keep the quizhub WiFi
+up for the nodes. Any new node that boots should show up in the table:
 
 ![Quiz Hub Web site](img/QuizHubWeb.png?raw=true "Quiz Hub Web Site")
 
-You can assign a name and optional sound to each button by clicking on a row in the table. The configured sound will play through the speakers of the device showing the web site. The team name and selected sound are stored within the browser local storage. Please note that on IOS (Apple) devices you should play a sound once (manually) by clicking one of the play button before sounds work.
+You can assign a name and optional sound to each node by clicking on a row in the table. The configured sound will play through the speakers of the device showing the web site. The team name and selected sound are stored within the browser local storage so the names are kept for your next quiz session. 
+Please note that on IOS (Apple) devices you should play a sound once (manually) by clicking one of the play button before sounds work.
 
 The statistics button allows you to see the battery level of all hubs and various communication statistics:
 
