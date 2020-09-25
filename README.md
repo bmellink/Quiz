@@ -2,7 +2,7 @@
 
 This project was based on the need to create a set of "Quiz" buttons for a fun family evening to support a Quiz setting, where multiple teams have to answer quiz questions and you need to know who presses the Quiz-button first.
 
-![Quiz Hub ESP32](img/QuizHubESP32Outside.png?raw=true "Quiz Hub ESP32")
+![Quiz Hub ESP32](img/QuizHubEsp32Outside.png?raw=true "Quiz Hub ESP32")
 
 ## Overview
 
@@ -52,7 +52,7 @@ feed the wires from the "Touch" pins to the outside of your box.
 
 ![Quiz Hub ESP8266](img/QuizHub_ESP8266.png?raw=true "Quiz Hub ESP8266")
 
-![Quiz Hub ESP32 Inside](img/QuizHubESP32Inside.png?raw=true "Quiz Hub ESP32 Inside")
+![Quiz Hub ESP32 Inside](img/QuizHubEsp32Inside.png?raw=true "Quiz Hub ESP32 Inside")
 
 TODO: Adding hardware schematics
 
