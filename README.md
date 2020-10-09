@@ -2,13 +2,14 @@
 
 This project was based on the need to create a set of "Quiz" buttons for a fun family evening to support a Quiz setting, where multiple teams have to answer quiz questions and you need to know who presses the Quiz-button first.
 
+![Quiz Button overview](img/QuizButtonOverview.jpeg?raw=true "Quiz Button Overview")
+
 ![Quiz Hub ESP32](img/QuizHubEsp32Outside.png?raw=true "Quiz Hub ESP32")
 
 ## Overview
 
-I bought 4 large pushbuttons on Sparkfun (see https://www.sparkfun.com/products/9181) and mounted the buttons on a piece of plywood, supported by some large screws. The Arduino hardware for each button is mounted underneath.
+I bought 4 large pushbuttons on Sparkfun (see https://www.sparkfun.com/products/9181) and mounted the buttons on a piece of bend plexiglass (see https://www.youtube.com/watch?v=-mVmzWQ7Iy8 for the plexiglass bender I use). The Arduino hardware for each button is mounted underneath.
 
-![Quiz Button overview](img/QuizButton_Overview.png?raw=true "Quiz Button Overview")
 
 Over time I created 3 generations:
 1. Fully wired - using UTP cable to connect each button to a central Raspberry PI based hub
@@ -20,8 +21,8 @@ This GitHub repository contains the code for the 2nd and 3rd generation:
 - [QuizHub](QuizHub) - Arduino code for the central hub of the 2nd generation (Arduino Pro Mini ATMEGA328/ nRF24L01 based with 4 segment display)
 - [QuizNode8266](QuizNode8266) - Arduino code for the buttons of the 3rd generation (ESP8266 based)
 - [QuizHub8266](QuizHub8266) - Arduino code for the central hub of the 3rd generation (ESP8266 based, using a web interface)
-- [QuizHubEsp32](QuizHubEsp32) - Arduino code for the central hub of the 3rd generation (ESP32 based, using a web interface). This version handles quiz requests more reliable/ honest in the heat of the game due to the faster CPU
-and improved WiFi connection
+- [QuizHubEsp32](QuizHubEsp32) - Arduino code for the central hub of the 3rd generation (ESP32 based, using a web interface). This version handles quiz requests more reliable/ honest in the heat of the game due to the 
+faster CPU and improved WiFi connection. So I would recommend going with this version.
 
 Please note you cannot mix 2nd and 3rd generation buttons and hub, as the communication protocol is different.
 
@@ -42,9 +43,11 @@ Hardware schematics will be added soon
 
 The quiz buttons are ESP8266 based. For the Quiz hub you can choose for the ESP8266 or ESP32. The ESP32 is a better choice as I found this one to be more reliable.
 
-The quiz button is powered by 2 AA batteries making the supply 3V (on average). Since the ESP8266 can not drive directly 20mA to the button LED, I added a current limiting circuit using a single NPN transistor. This requires some manual tuning based on the hFE of the selected transistor. The current limiting resistor that was added to the LED now needs to be removed.
+The quiz button is powered by 2 AA batteries making the supply 3V (on average). Since the ESP8266 can not drive directly 20mA to the button LED, I added a current limiting circuit using a single NPN transistor. This requires some manual tuning based on the hFE of the selected transistor. The originzal current limiting resistor that was added to the LED needs to be removed.
 
-![Quiz Button back](img/QuizButton_ESP8266.png?raw=true "Quiz Button back")
+![Quiz Button side](img/QuizButtonSide.jpeg?raw=true "Quiz Button back")
+![Quiz Button top](img/QuizButtonTop.jpeg?raw=true "Quiz Button back")
+![Quiz Button bottom](img/QuizButtonBottom.jpeg?raw=true "Quiz Button back")
 
 The ESP8266 or ESP32 hub is powered by a standard USB connector/ power supply. Gameplay can be activated using buttons or using the web interface of the built-in web server. In the picture below, standard switches are used
 as buttons. In the ESP32 version the capacitive "Touch" feature of the ESP32 chip is used, so you only need to
