@@ -8,8 +8,9 @@ This project was based on the need to create a set of "Quiz" buttons for a fun f
 
 ## Overview
 
-I bought 4 large pushbuttons on Sparkfun (see https://www.sparkfun.com/products/9181) and mounted the buttons on a piece of bend plexiglass (see https://www.youtube.com/watch?v=-mVmzWQ7Iy8 for the plexiglass bender I use). The Arduino hardware for each button is mounted underneath.
-
+I bought 4 large pushbuttons on Sparkfun (see https://www.sparkfun.com/products/9181) and mounted the buttons 
+on a piece of bend plexiglass using a glue gun. The Arduino hardware for each button is mounted underneath. 
+(In case you do not own a plexiglass, bender, you can build one yourself using this instruction: https://www.youtube.com/watch?v=-mVmzWQ7Iy8). 
 
 Over time I created 3 generations:
 1. Fully wired - using UTP cable to connect each button to a central Raspberry PI based hub
@@ -36,7 +37,7 @@ The quiz hub has a 4-digit 7 segment display to show status and results and uses
 
 ![Quiz Hub](img/QuizHub_AVR.png?raw=true "Quiz Hub")
 
-Hardware schematics will be added soon
+Hardware schematics here: [2nd Generation](Schematics/2ndGeneration.pdf)
 
 
 ## Hardware 3nd generation (ESP8266/ESP32)
@@ -57,7 +58,7 @@ feed the wires from the "Touch" pins to the outside of your box.
 
 ![Quiz Hub ESP32 Inside](img/QuizHubEsp32Inside.png?raw=true "Quiz Hub ESP32 Inside")
 
-TODO: Adding hardware schematics
+Hardware schematics here: [3nd Generation](Schematics/3rdGeneration.pdf)
 
 ## Getting started with the 3rd generation (ESP8266/ESP32)
 
@@ -71,7 +72,7 @@ Steps for the hub:
 - ESP8266 hub: Install the data upload tool to ensure you can upload the files in the [data folder](QuizHub8266/data) to the ESP8266 you will use as hub. See [here](https://arduino-esp8266.readthedocs.io/en/latest/filesystem.html) and [here](
 https://github.com/earlephilhower/arduino-esp8266littlefs-plugin/releases)
 - ESP32 hub:  Install the data upload tool to ensure you can upload the files in the [data folder](QuizHubEsp32/data) to the ESP32 you will use as hub. See [here](https://randomnerdtutorials.com/install-esp32-filesystem-uploader-arduino-ide/)
-- Upload the data folder to your ESP8266 or ESP32 using the tool above 
+- Upload the data folder to your ESP8266 or ESP32 using the tool above (the root folder should be data folder and the mp3 files are in the sounds subdirectory)
 - Compile and upload the QuizHub8266 or QuizHubEsp32 sketch
 - Point your phone or laptop to the access point "quizhub" and point your browser to http://192.168.4.1
 - Configure your local Wifi network and wait for the quizhub to reboot
