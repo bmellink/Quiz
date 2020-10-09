@@ -37,10 +37,10 @@ The quiz hub has a 4-digit 7 segment display to show status and results and uses
 
 ![Quiz Hub](img/QuizHub_AVR.png?raw=true "Quiz Hub")
 
-Hardware schematics here: [2nd Generation](Schematics/2ndGeneration.pdf)
+Hardware schematics [2nd Generation](Schematics/2ndGeneration.pdf)
 
 
-## Hardware 3nd generation (ESP8266/ESP32)
+## Hardware 3rd generation (ESP8266/ESP32)
 
 The quiz buttons are ESP8266 based. For the Quiz hub you can choose for the ESP8266 or ESP32. The ESP32 is a better choice as I found this one to be more reliable.
 
@@ -58,7 +58,7 @@ feed the wires from the "Touch" pins to the outside of your box.
 
 ![Quiz Hub ESP32 Inside](img/QuizHubEsp32Inside.png?raw=true "Quiz Hub ESP32 Inside")
 
-Hardware schematics here: [3nd Generation](Schematics/3rdGeneration.pdf)
+Hardware schematics [3rd Generation](Schematics/3rdGeneration.pdf)
 
 ## Getting started with the 3rd generation (ESP8266/ESP32)
 
